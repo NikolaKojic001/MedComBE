@@ -33,3 +33,7 @@ func GetAppointmentsByQuartals(companyID primitive.ObjectID, year int) (map[stri
 func GetAppointmentsByYears(companyID primitive.ObjectID, startYear int, endYear int) (map[string]int, error) {
 	return repository.GetAppointmentsByYears(companyID, startYear, endYear)
 }
+
+func FillDataSet() error {
+	return repository.FillDataSet()
+}

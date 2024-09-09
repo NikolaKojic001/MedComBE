@@ -28,6 +28,7 @@ func (uc *StatisticController) RegisterRoutes() {
 	uc.Router.HandleFunc("/statistics/get/appointments/by/month/{year}", uc.GetAppointmentsByMonth)
 	uc.Router.HandleFunc("/statistics/get/appointments/by/queartals/{year}", uc.GetAppointmentsByQuartals)
 	uc.Router.HandleFunc("/statistics/get/appointments/by/years/{startYear}/{endYear}", uc.GetAppointmentsByYears)
+	uc.Router.HandleFunc("/statistics/fill/database", uc.FillDataSet)
 
 }
 
@@ -252,4 +253,16 @@ func (uc *StatisticController) GetAppointmentsByYears(res http.ResponseWriter, r
 		json.NewEncoder(res).Encode(value)
 	}
 
+}
+
+func (uc *StatisticController) FillDataSet(res http.ResponseWriter, req *http.Request) {
+	err := service.FillDataSet()
+	if err != nil {
+		res.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(res).Encode("Error while inserting data")
+		return
+	} else {
+		res.WriteHeader(http.StatusOK)
+		json.NewEncoder(res).Encode("Data successfully inserted")
+	}
 }
