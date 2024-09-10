@@ -6,6 +6,7 @@ import (
 	model "main/Model"
 	repository "main/Repository"
 	"net/http"
+	"regexp"
 
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
@@ -18,7 +19,42 @@ func SaveCompany(company dto.CompanyDto, res http.ResponseWriter) bool {
 
 	_, found := repository.FindCompanyByName(company.Name)
 	if found {
+		res.WriteHeader(http.StatusBadRequest)
 		json.NewEncoder(res).Encode("Company name in use")
+		return false
+	}
+
+	if repository.FindUserEmail(company.Email) {
+		res.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(res).Encode("Email in use")
+		return false
+	}
+
+	if company.Email == "" || company.LocationAdmin.City == "" || company.Password == "" || company.LocationAdmin.Country == "" || company.Phonenumber == "" || company.Firstname == "" || company.Lastname == "" {
+		res.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(res).Encode("Some required parameters are missing.")
+		return false
+	}
+	if company.Password != company.PasswordAgain {
+		res.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(res).Encode("Passwords not match.")
+		return false
+	}
+
+	Emailmatch, _ := regexp.MatchString(`^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$`, company.Email)
+	if !Emailmatch {
+		res.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(res).Encode("Invalid email format.")
+		return false
+	}
+	if len(company.Password) < 6 {
+		res.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(res).Encode("Password must contain at least 6 charracters.")
+		return false
+	}
+	if !containsSpecialCharacters(company.Password) {
+		res.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(res).Encode("Password must contain a special charracter!")
 		return false
 	}
 
@@ -63,13 +99,9 @@ func GradeCompany(userID primitive.ObjectID, companyID primitive.ObjectID, reque
 	return repository.GradeCompany(userID, company.ID, requestBody)
 }
 
-func GetAllCompanyReports(companyID primitive.ObjectID, res http.ResponseWriter) ([]model.Report, error) {
-	company, found := repository.FindCompanyById(companyID, res)
-	if !found {
-		res.WriteHeader(http.StatusNotFound)
-		json.NewEncoder(res).Encode("Company not found")
-	}
-	return repository.GetAllCompanyReports(company.ID, res)
+func GetAllCompanyReports(res http.ResponseWriter) ([]model.Report, error) {
+
+	return repository.GetAllCompanyReports(res)
 }
 
 func GetCompanyById(companyID primitive.ObjectID, res http.ResponseWriter) (model.Company, bool) {

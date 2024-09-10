@@ -27,6 +27,12 @@ func SaveReservation(reservation dto.ReservationDto, companyID primitive.ObjectI
 		Canceled:  false,
 	}
 
+	reservations, _ := GetAllReservations()
+	available := isAvailableForPeriod(reservations, reservation.StartDate.Time(), reservation.EndDate.Time())
+	if !available {
+		return model.Reservation{}, false
+	}
+
 	insertResult, err := ReservationsCollection.InsertOne(context.Background(), newReservation)
 	if err != nil {
 		log.Println("Error inserting new reservation:", err)
@@ -155,8 +161,10 @@ func isAvailableForPeriod(reservations []model.Reservation, periodStart, periodE
 
 func GetAllForUser(userID primitive.ObjectID) ([]model.Reservation, bool) {
 	reservationsCollection := client.Database("MedicinskaOprema").Collection("Reservations")
-
-	filter := bson.M{"userID": userID}
+	filter := bson.M{
+		"userID":    userID,
+		"startDate": bson.M{"$gte": primitive.NewDateTimeFromTime(time.Now())}, // StartDate >= trenutni datum
+	}
 
 	cursor, err := reservationsCollection.Find(context.Background(), filter)
 	if err != nil {
@@ -166,6 +174,7 @@ func GetAllForUser(userID primitive.ObjectID) ([]model.Reservation, bool) {
 	defer cursor.Close(context.Background())
 
 	var reservations []model.Reservation
+
 	if err := cursor.All(context.Background(), &reservations); err != nil {
 		log.Println("Error decoding reservations:", err)
 		return nil, false
@@ -176,6 +185,37 @@ func GetAllForUser(userID primitive.ObjectID) ([]model.Reservation, bool) {
 	}
 
 	return reservations, true
+}
+
+func GetAllReservations() ([]model.Reservation, error) {
+	ReservationsCollection := GetClient().Database("MedicinskaOprema").Collection("Reservations")
+	filter := bson.M{}
+
+	var reservations []model.Reservation
+
+	cursor, err := ReservationsCollection.Find(context.Background(), filter)
+	if err != nil {
+		log.Println("Error fetching reservations:", err)
+		return nil, err
+	}
+	defer cursor.Close(context.Background())
+
+	for cursor.Next(context.Background()) {
+		var reservation model.Reservation
+		err := cursor.Decode(&reservation)
+		if err != nil {
+			log.Println("Error decoding reservation:", err)
+			return nil, err
+		}
+		reservations = append(reservations, reservation)
+	}
+
+	if err := cursor.Err(); err != nil {
+		log.Println("Cursor error:", err)
+		return nil, err
+	}
+
+	return reservations, nil
 }
 
 func CancelReservation(reservationID primitive.ObjectID, userID primitive.ObjectID) bool {
@@ -231,7 +271,10 @@ func CancelReservation(reservationID primitive.ObjectID, userID primitive.Object
 func GetAllCanceled() ([]model.Reservation, bool) {
 	reservationsCollection := client.Database("MedicinskaOprema").Collection("Reservations")
 
-	filter := bson.M{"canceled": true}
+	filter := bson.M{
+		"canceled":  true,
+		"startDate": bson.M{"$gte": primitive.NewDateTimeFromTime(time.Now())}, // StartDate >= trenutni datum
+	}
 
 	cursor, err := reservationsCollection.Find(context.Background(), filter)
 	if err != nil {

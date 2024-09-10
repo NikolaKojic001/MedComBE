@@ -2,7 +2,6 @@ package Controller
 
 import (
 	"encoding/json"
-	"fmt"
 	dto "main/Dto"
 	service "main/Service"
 	"net/http"
@@ -163,28 +162,17 @@ func (uc *CompanyController) GetAllCompanies(res http.ResponseWriter, req *http.
 }
 
 func (uc *CompanyController) GetAllCompanyReports(res http.ResponseWriter, req *http.Request) {
-	queryParams := req.URL.Query()
-	companyID := queryParams.Get("companyID")
-	companyObjectID, companyIDErr := primitive.ObjectIDFromHex(companyID)
-	if companyIDErr != nil {
-		res.WriteHeader(http.StatusBadRequest)
-		fmt.Println("Ovde se odma zajebem")
-		json.NewEncoder(res).Encode("Error with company id")
-		return
-	}
-
 	authHeader := req.Header.Get("Authorization")
 	user, pointer := service.GetUserFromToken(res, req, authHeader)
-	if pointer == nil || user.Role != "CompanyAdmin" {
+	if pointer == nil || user.Role != "Admin" {
 		res.WriteHeader(http.StatusUnauthorized)
 		json.NewEncoder(res).Encode("Unauthorized")
 		return
 	}
 
-	reports, err := service.GetAllCompanyReports(companyObjectID, res)
+	reports, err := service.GetAllCompanyReports(res)
 	if err != nil {
 		res.WriteHeader(http.StatusBadRequest)
-		fmt.Println("Ovde se posle zajebem")
 		json.NewEncoder(res).Encode("Error while finding reports")
 	} else {
 		res.WriteHeader(http.StatusOK)
@@ -277,7 +265,7 @@ func (uc *CompanyController) ReportReplay(res http.ResponseWriter, req *http.Req
 
 	authHeader := req.Header.Get("Authorization")
 	user, pointer := service.GetUserFromToken(res, req, authHeader)
-	if pointer == nil || user.Role != "CompanyAdmin" {
+	if pointer == nil || user.Role != "Admin" {
 		res.WriteHeader(http.StatusUnauthorized)
 		json.NewEncoder(res).Encode("Unauthorized")
 		return

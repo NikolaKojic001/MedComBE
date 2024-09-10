@@ -158,12 +158,11 @@ func GradeCompany(userID primitive.ObjectID, companyID primitive.ObjectID, reque
 	}
 }
 
-func GetAllCompanyReports(companyID primitive.ObjectID, res http.ResponseWriter) ([]model.Report, error) {
+func GetAllCompanyReports(res http.ResponseWriter) ([]model.Report, error) {
 	reportsCollection := GetClient().Database("MedicinskaOprema").Collection("Reports")
 
 	filter := bson.M{
-		"companyid": companyID,
-		"replay":    "",
+		"replay": "",
 	}
 
 	cur, err := reportsCollection.Find(context.TODO(), filter)
@@ -274,6 +273,11 @@ func ReportReplay(id primitive.ObjectID, description string, res http.ResponseWr
 	filter := bson.M{"_id": id}
 
 	update := bson.M{"$set": bson.M{"replay": description}}
+
+	report, _ := GetReportByID(id, res)
+	if report.Replay != "" {
+		return model.Report{}, false
+	}
 
 	result, err := reportsCollection.UpdateOne(context.TODO(), filter, update)
 	if err != nil {
